@@ -12,8 +12,9 @@ Configuration: 1 shared CPU, 256mb RAM, in Amsterdam, Netherlands
 
 <sub><i>Both are the same host, just different domains in case there are any issues</i></sub>
 
-## Configuration
+## Changes
 TrustedProxyCheck is disabled.
+The homepage is changed.
 
 ## What is stored
 I store nothing. Only errors are temporarily logged (error description, the request parameters: query, username, track, etc)
