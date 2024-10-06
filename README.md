@@ -14,6 +14,7 @@ Configuration: 1 shared CPU, 256mb RAM, in Amsterdam, Netherlands
 
 ## Changes
 TrustedProxyCheck is disabled.
+EarlyData is enabled.
 The homepage is changed.
 
 ## What is stored
