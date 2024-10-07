@@ -15,7 +15,7 @@ Configuration: 1 shared CPU, 256mb RAM, in Amsterdam, Netherlands
 ## Changes
 TrustedProxyCheck is disabled.
 EarlyData is enabled.
-The homepage is changed.
+The page design is changed (accent color and more)
 
 ## What is stored
 I store nothing. Only errors are temporarily logged (error description, the request parameters: query, username, track, etc)
