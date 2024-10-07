@@ -1,6 +1,8 @@
 # sc.maid.zone
 [soundcloak](https://github.com/maid-zone/soundcloak), but with extra patches for [sc.maid.zone](https://sc.maid.zone)
 
+Running the most recent version of soundcloak most of the time (since this instance is maintained by [me](https://laptopc.at), the main developer of soundcloak)
+
 ## Hosting
 Hosted on [fly.io](https://fly.io), which means the traffic goes through their reverse proxies.
 
