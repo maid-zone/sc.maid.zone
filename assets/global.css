@@ -6,7 +6,7 @@
 }
 
 :root {
-  --accent: orangered;
+  --accent: #ff4151;
   --primary: #0f111a;
   --secondary: #00010a;
   --0: #3b4252;
@@ -150,4 +150,15 @@ select:focus {
 .btns {
   display: flex;
   gap: 1rem;
+}
+
+.image {
+  position: fixed;
+  bottom: -5px;
+}
+
+@media screen and (max-width: 640px) {
+  .image {
+      display: none;
+  }
 }
