@@ -13,7 +13,7 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-// Functions/structures related to users
+// Functions/structures related to tracks
 
 var ErrIncompatibleStream = errors.New("incompatible stream")
 var ErrNoURL = errors.New("no url")
@@ -27,23 +27,30 @@ type Track struct {
 	CreatedAt   string `json:"created_at"`
 	Description string `json:"description"`
 	//Duration      int    `json:"duration"` // there are duration and full_duration fields wtf does that mean
-	Genre         string `json:"genre"`
-	Kind          string `json:"kind"` // should always be "track"!
-	LastModified  string `json:"last_modified"`
-	License       string `json:"license"`
-	Likes         int64  `json:"likes_count"`
-	Permalink     string `json:"permalink"`
-	Played        int64  `json:"playback_count"`
-	Reposted      int64  `json:"reposts_count"`
-	TagList       string `json:"tag_list"`
-	Title         string `json:"title"`
-	ID            string `json:"urn"`
-	Media         Media  `json:"media"`
-	Authorization string `json:"track_authorization"`
-	Author        User   `json:"user"`
+	Genre         string      `json:"genre"`
+	Kind          string      `json:"kind"` // should always be "track"!
+	LastModified  string      `json:"last_modified"`
+	License       string      `json:"license"`
+	Likes         int64       `json:"likes_count"`
+	Permalink     string      `json:"permalink"`
+	Played        int64       `json:"playback_count"`
+	Reposted      int64       `json:"reposts_count"`
+	TagList       string      `json:"tag_list"`
+	Title         string      `json:"title"`
+	ID            string      `json:"urn"`
+	Media         Media       `json:"media"`
+	Authorization string      `json:"track_authorization"`
+	Author        User        `json:"user"`
+	Policy        TrackPolicy `json:"policy"`
 
 	IDint int64 `json:"id"`
 }
+
+type TrackPolicy string
+
+const (
+	PolicyBlock TrackPolicy = "BLOCK"
+)
 
 type Protocol string
 
@@ -169,7 +176,7 @@ func GetArbitraryTrack(data string) (Track, error) {
 		return GetTrackByID(data)
 	}
 
-	// this should be at the end since it manipulates data
+	// this part should be at the end since it manipulates data
 	if len(data) < 4 {
 		return Track{}, ErrNoURL
 	}
@@ -250,14 +257,14 @@ func GetTracks(ids string) ([]*Track, error) {
 }
 
 func (t Track) GetStream() (string, error) {
-	cid, err := GetClientID()
-	if err != nil {
-		return "", err
-	}
-
 	tr := t.Media.SelectCompatible()
 	if tr == nil {
 		return "", ErrIncompatibleStream
+	}
+
+	cid, err := GetClientID()
+	if err != nil {
+		return "", err
 	}
 
 	req := fasthttp.AcquireRequest()

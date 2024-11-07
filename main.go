@@ -15,6 +15,7 @@ import (
 	"github.com/maid-zone/soundcloak/lib/cfg"
 	proxyimages "github.com/maid-zone/soundcloak/lib/proxy_images"
 	proxystreams "github.com/maid-zone/soundcloak/lib/proxy_streams"
+	"github.com/maid-zone/soundcloak/lib/restream"
 	"github.com/maid-zone/soundcloak/lib/sc"
 	"github.com/maid-zone/soundcloak/templates"
 )
@@ -124,14 +125,19 @@ func main() {
 			log.Printf("error getting %s: %s\n", u, err)
 			return err
 		}
+		displayErr := ""
 
 		stream, err := track.GetStream()
 		if err != nil {
-			log.Printf("error getting %s stream from %s: %s\n", track.Permalink, track.Author.Permalink, err)
+			log.Printf("error getting %s stream from %s: %s\n", c.Params("track"), c.Params("user"), err)
+			displayErr = "Failed to get track stream: " + err.Error()
+			if track.Policy == sc.PolicyBlock {
+				displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+			}
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.TrackEmbed(track, stream).Render(context.Background(), c)
+		return templates.TrackEmbed(track, stream, displayErr).Render(context.Background(), c)
 	})
 
 	if cfg.ProxyImages {
@@ -147,6 +153,7 @@ func main() {
 			ProxyImages       bool
 			ProxyStreams      bool
 			FullyPreloadTrack bool
+			Restream          bool
 		}
 
 		app.Get("/_/info", func(c *fiber.Ctx) error {
@@ -154,8 +161,13 @@ func main() {
 				ProxyImages:       cfg.ProxyImages,
 				ProxyStreams:      cfg.ProxyStreams,
 				FullyPreloadTrack: cfg.FullyPreloadTrack,
+				Restream:          cfg.Restream,
 			})
 		})
+	}
+
+	if cfg.Restream {
+		restream.Load(app)
 	}
 
 	app.Get("/:user/sets", func(c *fiber.Ctx) error {
@@ -215,14 +227,19 @@ func main() {
 			log.Printf("error getting %s from %s: %s\n", c.Params("track"), c.Params("user"), err)
 			return err
 		}
+		displayErr := ""
 
 		stream, err := track.GetStream()
 		if err != nil {
 			log.Printf("error getting %s stream from %s: %s\n", c.Params("track"), c.Params("user"), err)
+			displayErr = "Failed to get track stream: " + err.Error()
+			if track.Policy == sc.PolicyBlock {
+				displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+			}
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(track.Title+" by "+track.Author.Username, templates.Track(track, stream), templates.TrackHeader(track)).Render(context.Background(), c)
+		return templates.Base(track.Title+" by "+track.Author.Username, templates.Track(track, stream, displayErr), templates.TrackHeader(track)).Render(context.Background(), c)
 	})
 
 	app.Get("/:user", func(c *fiber.Ctx) error {
