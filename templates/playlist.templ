@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"github.com/maid-zone/soundcloak/lib/cfg"
 )
 
 templ PlaylistHeader(p sc.Playlist) {
@@ -32,21 +33,18 @@ templ PlaylistItem(playlist *sc.Playlist, showUsername bool) {
 	</a>
 }
 
-templ Playlist(p sc.Playlist) {
+templ Playlist(prefs cfg.Preferences, p sc.Playlist) {
 	if p.Artwork != "" {
 		<img src={ p.Artwork } width="300px"/>
 	}
 	<h1>{ p.Title }</h1>
 	@UserItem(&p.Author)
-	<div class="btns">
+	<div style="display: flex;">
 		<a class="btn" href={ templ.URL("https://soundcloud.com/" + p.Author.Permalink + "/sets/" + p.Permalink) }>view on soundcloud</a>
 	</div>
 	<br/>
 	if p.Description != "" {
-		<details>
-			<summary>Toggle description</summary>
-			<p style="white-space: pre-wrap">{ p.Description }</p>
-		</details>
+		@Description(prefs, p.Description)
 	}
 	<p>{ strconv.FormatInt(p.TrackCount, 10) } tracks</p>
 	<br/>

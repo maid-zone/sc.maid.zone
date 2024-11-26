@@ -15,7 +15,7 @@ templ TrackHeader(prefs cfg.Preferences, t sc.Track) {
 	<meta name="og:image" content={ t.Artwork }/>
 	<link rel="icon" type="image/x-icon" href={ t.Artwork }/>
 	if *prefs.Player == cfg.HLSPlayer {
-		<script src="/js/hls.js/hls.light.js"></script>
+		<script src="/js/hls.js/hls.light.min.js"></script>
 	}
 }
 
@@ -39,7 +39,7 @@ templ TrackPlayer(prefs cfg.Preferences, track sc.Track, stream string, displayE
 				JavaScript is disabled! Audio playback may not work without it enabled. 
 				if cfg.Restream {
 					<br>
-					<a href="/_/preferences">You can enable Restream player in the preferences. It works without JavaScript.</a>
+					<a class="link" href="/_/preferences">You can enable Restream player in the preferences. It works without JavaScript.</a>
 				}
 			</noscript>
 		}
@@ -81,15 +81,13 @@ templ Track(prefs cfg.Preferences, t sc.Track, stream string, displayErr string)
 		<br/>
 	}
 	@UserItem(&t.Author)
-	<div class="btns">
+	//<div class="btns">
+	<div style="display: flex;">
 		<a class="btn" href={ templ.URL("https://soundcloud.com/" + t.Author.Permalink + "/" + t.Permalink) }>view on soundcloud</a>
 	</div>
 	<br/>
 	if t.Description != "" {
-		<details>
-			<summary>Toggle description</summary>
-			<p style="white-space: pre-wrap">{ t.Description }</p>
-		</details>
+		@Description(prefs, t.Description)
 	}
 	<p>{ strconv.FormatInt(t.Likes, 10) } likes</p>
 	<p>{ strconv.FormatInt(t.Played, 10) } plays</p>

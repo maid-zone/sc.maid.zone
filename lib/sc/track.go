@@ -211,7 +211,7 @@ func SearchTracks(prefs cfg.Preferences, args string) (*Paginated[*Track], error
 	}
 
 	p := Paginated[*Track]{Next: "https://" + api + "/search/tracks" + args + "&client_id=" + cid}
-	err = p.Proceed()
+	err = p.Proceed(true)
 	if err != nil {
 		return nil, err
 	}

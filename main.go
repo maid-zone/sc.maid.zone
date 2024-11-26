@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
-	"github.com/gofiber/fiber/v2/middleware/earlydata"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/segmentio/encoding/json"
 	"github.com/valyala/fasthttp"
@@ -33,13 +32,10 @@ func main() {
 	})
 
 	app.Use(recover.New())
-	if cfg.EarlyData {
-		app.Use(earlydata.New())
-	}
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 
-	app.Static("/", "assets", fiber.Static{Compress: true, MaxAge: 3600})
-	app.Static("/js/hls.js/", "node_modules/hls.js/dist", fiber.Static{Compress: true, MaxAge: 14400})
+	app.Static("/", "assets", fiber.Static{Compress: true, MaxAge: 3600})                              // 1hour
+	app.Static("/js/hls.js/", "node_modules/hls.js/dist", fiber.Static{Compress: true, MaxAge: 28800}) // 8 hours
 
 	app.Get("/search", func(c *fiber.Ctx) error {
 		prefs, err := preferences.Get(c)
@@ -147,18 +143,49 @@ func main() {
 			} else if *prefs.Player == cfg.HLSPlayer {
 				stream, err = tr.GetStream(prefs, track.Authorization)
 			}
-		}
 
-		// error will already be nil, so this code won't run with NonePlayer anyways, no need to doublecheck or set err to nil
-		if err != nil {
-			displayErr = "Failed to get track stream: " + err.Error()
-			if track.Policy == sc.PolicyBlock {
-				displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+			if err != nil {
+				displayErr = "Failed to get track stream: " + err.Error()
+				if track.Policy == sc.PolicyBlock {
+					displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+				}
 			}
 		}
 
 		c.Set("Content-Type", "text/html")
 		return templates.TrackEmbed(prefs, track, stream, displayErr).Render(context.Background(), c)
+	})
+
+	app.Get("/_/featured", func(c *fiber.Ctx) error {
+		prefs, err := preferences.Get(c)
+		if err != nil {
+			return err
+		}
+
+		tracks, err := sc.GetFeaturedTracks(prefs, c.Query("pagination", "?limit=20"))
+		if err != nil {
+			log.Printf("error getting featured tracks: %s\n", err)
+			return err
+		}
+
+		c.Set("Content-Type", "text/html")
+		return templates.Base("Featured Tracks", templates.FeaturedTracks(tracks), nil).Render(context.Background(), c)
+	})
+
+	app.Get("/discover", func(c *fiber.Ctx) error {
+		prefs, err := preferences.Get(c)
+		if err != nil {
+			return err
+		}
+
+		selections, err := sc.GetSelections(prefs) // There is no pagination
+		if err != nil {
+			log.Printf("error getting selections: %s\n", err)
+			return err
+		}
+
+		c.Set("Content-Type", "text/html")
+		return templates.Base("Discover", templates.Discover(selections), nil).Render(context.Background(), c)
 	})
 
 	if cfg.ProxyImages {
@@ -212,7 +239,7 @@ func main() {
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(user.Username, templates.UserPlaylists(user, pl), templates.UserHeader(user)).Render(context.Background(), c)
+		return templates.Base(user.Username, templates.UserPlaylists(prefs, user, pl), templates.UserHeader(user)).Render(context.Background(), c)
 	})
 
 	app.Get("/:user/albums", func(c *fiber.Ctx) error {
@@ -234,7 +261,7 @@ func main() {
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(user.Username, templates.UserAlbums(user, pl), templates.UserHeader(user)).Render(context.Background(), c)
+		return templates.Base(user.Username, templates.UserAlbums(prefs, user, pl), templates.UserHeader(user)).Render(context.Background(), c)
 	})
 
 	app.Get("/:user/reposts", func(c *fiber.Ctx) error {
@@ -256,7 +283,7 @@ func main() {
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(user.Username, templates.UserReposts(user, p), templates.UserHeader(user)).Render(context.Background(), c)
+		return templates.Base(user.Username, templates.UserReposts(prefs, user, p), templates.UserHeader(user)).Render(context.Background(), c)
 	})
 
 	app.Get("/:user/:track", func(c *fiber.Ctx) error {
@@ -280,13 +307,12 @@ func main() {
 			} else if *prefs.Player == cfg.HLSPlayer {
 				stream, err = tr.GetStream(prefs, track.Authorization)
 			}
-		}
 
-		// error will already be nil, so this code won't run with NonePlayer anyways, no need to doublecheck or set err to nil
-		if err != nil {
-			displayErr = "Failed to get track stream: " + err.Error()
-			if track.Policy == sc.PolicyBlock {
-				displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+			if err != nil {
+				displayErr = "Failed to get track stream: " + err.Error()
+				if track.Policy == sc.PolicyBlock {
+					displayErr += "\nThis track may be blocked in the country where this instance is hosted."
+				}
 			}
 		}
 
@@ -317,7 +343,7 @@ func main() {
 		//fmt.Println("gettracks", time.Since(h))
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(usr.Username, templates.User(usr, p), templates.UserHeader(usr)).Render(context.Background(), c)
+		return templates.Base(usr.Username, templates.User(prefs, usr, p), templates.UserHeader(usr)).Render(context.Background(), c)
 	})
 
 	app.Get("/:user/sets/:playlist", func(c *fiber.Ctx) error {
@@ -345,7 +371,7 @@ func main() {
 		}
 
 		c.Set("Content-Type", "text/html")
-		return templates.Base(playlist.Title+" by "+playlist.Author.Username, templates.Playlist(playlist), templates.PlaylistHeader(playlist)).Render(context.Background(), c)
+		return templates.Base(playlist.Title+" by "+playlist.Author.Username, templates.Playlist(prefs, playlist), templates.PlaylistHeader(playlist)).Render(context.Background(), c)
 	})
 
 	log.Fatal(app.Listen(cfg.Addr))
