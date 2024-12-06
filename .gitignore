@@ -6,3 +6,4 @@ fly.toml
 *.fiber.gz
 soundcloak.json
 Dockerfile
+regexp2_codegen.go
