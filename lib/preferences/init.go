@@ -38,6 +38,22 @@ func Defaults(dst *cfg.Preferences) {
 	if dst.DefaultAutoplayMode == nil {
 		dst.DefaultAutoplayMode = cfg.DefaultPreferences.DefaultAutoplayMode
 	}
+
+	if dst.HLSAudio == nil {
+		dst.HLSAudio = cfg.DefaultPreferences.HLSAudio
+	}
+
+	if dst.RestreamAudio == nil {
+		dst.RestreamAudio = cfg.DefaultPreferences.RestreamAudio
+	}
+
+	if dst.DownloadAudio == nil {
+		dst.DownloadAudio = cfg.DefaultPreferences.DownloadAudio
+	}
+
+	if dst.ShowAudio == nil {
+		dst.ShowAudio = cfg.DefaultPreferences.ShowAudio
+	}
 }
 
 func Get(c *fiber.Ctx) (cfg.Preferences, error) {
@@ -61,6 +77,14 @@ type PrefsForm struct {
 	FullyPreloadTrack   string
 	AutoplayNextTrack   string
 	DefaultAutoplayMode string
+	HLSAudio            string
+	RestreamAudio       string
+	DownloadAudio       string
+	ShowAudio           string
+}
+
+type Export struct {
+	Preferences *cfg.Preferences `json:",omitempty"`
 }
 
 func Load(r fiber.Router) {
@@ -86,18 +110,28 @@ func Load(r fiber.Router) {
 			return err
 		}
 
-		if *old.Player == "hls" {
+		if *old.AutoplayNextTrack {
+			old.DefaultAutoplayMode = &p.DefaultAutoplayMode
+		}
+
+		if p.AutoplayNextTrack == "on" {
+			old.AutoplayNextTrack = &cfg.True
+		} else {
+			old.AutoplayNextTrack = &cfg.False
+		}
+
+		if p.ShowAudio == "on" {
+			old.ShowAudio = &cfg.True
+		} else {
+			old.ShowAudio = &cfg.False
+		}
+
+		if *old.Player == cfg.HLSPlayer {
 			if cfg.ProxyStreams {
 				if p.ProxyStreams == "on" {
 					old.ProxyStreams = &cfg.ProxyStreams // true!
 				} else if p.ProxyStreams == "" {
 					old.ProxyStreams = &cfg.False
-				}
-
-				if p.AutoplayNextTrack == "on" {
-					old.AutoplayNextTrack = &cfg.True
-				} else {
-					old.AutoplayNextTrack = &cfg.False
 				}
 			}
 
@@ -106,6 +140,16 @@ func Load(r fiber.Router) {
 			} else if p.FullyPreloadTrack == "" {
 				old.FullyPreloadTrack = &cfg.False
 			}
+
+			old.HLSAudio = &p.HLSAudio
+		}
+
+		if cfg.Restream {
+			if *old.Player == cfg.RestreamPlayer {
+				old.RestreamAudio = &p.RestreamAudio
+			}
+
+			old.DownloadAudio = &p.DownloadAudio
 		}
 
 		if cfg.ProxyImages {
@@ -122,12 +166,73 @@ func Load(r fiber.Router) {
 			old.ParseDescriptions = &cfg.False
 		}
 
-		if *old.AutoplayNextTrack {
-			old.DefaultAutoplayMode = &p.DefaultAutoplayMode
-		}
 		old.Player = &p.Player
 
 		data, err := json.Marshal(old)
+		if err != nil {
+			return err
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "prefs",
+			Value:    string(data),
+			Expires:  time.Now().Add(400 * 24 * time.Hour),
+			HTTPOnly: true,
+			SameSite: "strict",
+		})
+
+		return c.Redirect("/_/preferences")
+	})
+
+	r.Get("/_/preferences/reset", func(c *fiber.Ctx) error {
+		// c.ClearCookie("prefs")
+		c.Cookie(&fiber.Cookie{ // I've had some issues with c.ClearCookie() method, so using this workaround for now
+			Name:     "prefs",
+			Value:    "{}",
+			Expires:  time.Now().Add(400 * 24 * time.Hour),
+			HTTPOnly: true,
+			SameSite: "strict",
+		})
+
+		return c.Redirect("/_/preferences")
+	})
+
+	r.Get("/_/preferences/export", func(c *fiber.Ctx) error {
+		p, err := Get(c)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(Export{Preferences: &p})
+	})
+
+	r.Post("/_/preferences/import", func(c *fiber.Ctx) error {
+		f, err := c.FormFile("prefs")
+		if err != nil {
+			return err
+		}
+
+		fd, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer fd.Close()
+
+		dec := json.NewDecoder(fd)
+
+		var p Export
+		err = dec.Decode(&p)
+		if err != nil {
+			return err
+		}
+
+		if p.Preferences == nil {
+			p.Preferences = &cfg.Preferences{}
+		}
+
+		Defaults(p.Preferences)
+
+		data, err := json.Marshal(p.Preferences)
 		if err != nil {
 			return err
 		}
